@@ -1,6 +1,4 @@
 import os
-import re
-import ffmpeg
 import yt_dlp
 import uuid
 
@@ -42,10 +40,9 @@ celery.conf.update(
 
 @celery.task(name="tasks.process_message", queue=app.config["RMQ_QUEUE_READ"])
 def process_message(message):
-    clip: Clip = ProtobufConverter.json_to_protobuf(message)
-
     try:
-        format = 'bestvideo[height<=720]+bestaudio/best[height<=720]'
+        clip: Clip = ProtobufConverter.json_to_protobuf(message)
+        format = "bestvideo[height<=720]+bestaudio/best[height<=720]"
 
         tmpVideoPath = f"/tmp/{clip.id}.mp4"
 
@@ -58,65 +55,69 @@ def process_message(message):
 
         if not s3_client.upload_file(tmpVideoPath, keyVideo):
             raise Exception()
-        
+
         file_client.delete_file(tmpVideoPath)
 
         clip.originalVideo.CopyFrom(video)
 
-        clip.status = ClipStatus.Name(
-            ClipStatus.VIDEO_DOWNLOADER_COMPLETE
-        )
+        clip.status = ClipStatus.Name(ClipStatus.VIDEO_DOWNLOADER_COMPLETE)
 
         protobuf = VideoDownloaderMessage()
         protobuf.clip.CopyFrom(clip)
 
-        if not rmq_client.send_message(protobuf, "App\\Protobuf\\VideoDownloaderMessage"):
+        if not rmq_client.send_message(
+            protobuf, "App\\Protobuf\\VideoDownloaderMessage"
+        ):
             raise Exception()
-        
+
         return True
-        
+
     except Exception:
-        clip.status = ClipStatus.Name(
-            ClipStatus.VIDEO_DOWNLOADER_ERROR
-        )
+        clip.status = ClipStatus.Name(ClipStatus.VIDEO_DOWNLOADER_ERROR)
 
         protobuf = VideoDownloaderMessage()
         protobuf.clip.CopyFrom(clip)
 
-        if not rmq_client.send_message(protobuf, "App\\Protobuf\\VideoDownloaderMessage"):
+        if not rmq_client.send_message(
+            protobuf, "App\\Protobuf\\VideoDownloaderMessage"
+        ):
             return False
+
 
 def get_video_info(format, url):
     ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
-        'format': format,
+        "quiet": True,
+        "skip_download": True,
+        "format": format,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
-        return info.get('duration')
-    
+        return info.get("duration")
+
+
 def download_video(format, url, output_path):
     ydl_opts = {
-        'format': format,
-        'outtmpl': output_path,
-        'merge_output_format': 'mp4',
+        "format": format,
+        "outtmpl": output_path,
+        "merge_output_format": "mp4",
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
+
 def get_file_size(path):
     size_bytes = os.path.getsize(path)
     return size_bytes
+
 
 def create_original_video(length, size) -> Video:
     id = str(uuid.uuid4())
     video = Video()
     video.id = id
     video.name = f"{id}.mp4"
-    video.mimeType = 'video/mp4'
+    video.mimeType = "video/mp4"
     video.originalName = video.name
 
     video.size = size

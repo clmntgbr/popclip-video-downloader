@@ -86,7 +86,9 @@ class ProtobufConverter:
         configuration.subtitleOutlineColor = clip_data["configuration"][
             "subtitleOutlineColor"
         ]
-        configuration.subtitleOutlineThickness = clip_data["configuration"]["subtitleOutlineThickness"]
+        configuration.subtitleOutlineThickness = clip_data["configuration"][
+            "subtitleOutlineThickness"
+        ]
         configuration.subtitleShadow = clip_data["configuration"]["subtitleShadow"]
         configuration.subtitleShadowColor = clip_data["configuration"][
             "subtitleShadowColor"
